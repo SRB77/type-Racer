@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TypeRacer - 1v1 Multiplayer Typing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Canvas Confetti for celebrations -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo" id="home-logo">
+      <span>⌨️</span> Type<span>Racer</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" id="sound-toggle" title="Toggle Sound">🔊</button>
+      <div id="connection-status" class="badge-tag" style="color: #4ade80;">🟢 Online</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Screen 1: Welcome & Setup -->
+    <section id="setup-screen" class="card" style="max-width: 520px; margin: 0 auto; width: 100%;">
+      <div class="text-center mb-4">
+        <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Join the Race 🏁</h2>
+        <p class="text-sub" style="font-size: 0.95rem;">A real-time typing battle for you and your favorite person 💕</p>
+      </div>
+
+      <div class="mb-4">
+        <label class="text-sub" style="font-size: 0.85rem; font-weight: 600;">YOUR RACER NAME</label>
+        <input type="text" id="player-name-input" placeholder="Enter nickname..." maxlength="15" autocomplete="off" style="margin-top: 0.4rem;">
+      </div>
+
+      <div class="mb-4">
+        <label class="text-sub" style="font-size: 0.85rem; font-weight: 600;">CHOOSE YOUR AVATAR</label>
+        <div class="avatar-grid" id="avatar-selector">
+          <div class="avatar-opt selected" data-avatar="🏎️">🏎️</div>
+          <div class="avatar-opt" data-avatar="🚀">🚀</div>
+          <div class="avatar-opt" data-avatar="🐱">🐱</div>
+          <div class="avatar-opt" data-avatar="🐶">🐶</div>
+          <div class="avatar-opt" data-avatar="💖">💖</div>
+          <div class="avatar-opt" data-avatar="⚡">⚡</div>
+          <div class="avatar-opt" data-avatar="🦄">🦄</div>
+          <div class="avatar-opt" data-avatar="🎮">🎮</div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2 mt-4">
+        <button id="create-room-btn" class="btn-primary w-full">Create 1v1 Room ✨</button>
+        
+        <div class="flex items-center gap-2 my-2" style="color: var(--sub-color); font-size: 0.85rem;">
+          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+          <span>OR ENTER CODE</span>
+          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+        </div>
+
+        <div class="flex gap-2">
+          <input type="text" id="join-code-input" placeholder="CODE (e.g. LOVE-42)" style="text-transform: uppercase;">
+          <button id="join-room-btn" class="btn-secondary" style="white-space: nowrap;">Join</button>
+        </div>
+
+        <button id="solo-practice-btn" class="btn-secondary w-full mt-4" style="border-style: dashed;">
+          ⚡ Solo Practice Mode
+        </button>
+      </div>
+    </section>
+
+    <!-- Screen 2: Room Lobby -->
+    <section id="lobby-screen" class="card hidden" style="max-width: 650px; margin: 0 auto; width: 100%;">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <span class="text-sub" style="font-size: 0.85rem;">ROOM CODE</span>
+          <h2 id="room-code-display" class="text-gold" style="font-size: 2rem; letter-spacing: 2px;">----</h2>
+        </div>
+        <button id="copy-link-btn" class="btn-secondary" style="font-size: 0.9rem; padding: 0.6rem 1rem;">
+          📋 Copy Invite Link
+        </button>
+      </div>
+
+      <!-- Settings (Host only controls) -->
+      <div id="host-settings" class="config-bar">
+        <div class="config-group">
+          <span class="text-sub">time:</span>
+          <button class="config-btn active" data-time="15">15</button>
+          <button class="config-btn" data-time="30">30</button>
+          <button class="config-btn" data-time="60">60</button>
+        </div>
+        <div style="width: 1px; height: 16px; background: var(--border-color);"></div>
+        <div class="config-group">
+          <span class="text-sub">mode:</span>
+          <button class="config-btn active" data-mode="quote">quotes</button>
+          <button class="config-btn" data-mode="words">words</button>
+        </div>
+      </div>
+
+      <!-- Racers in room -->
+      <div class="mb-4">
+        <div class="text-sub mb-2" style="font-size: 0.85rem;">RACERS IN LOBBY</div>
+        <div id="racers-lobby-list" class="flex flex-col gap-2">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center mt-4">
+        <button id="leave-room-btn" class="btn-secondary" style="color: var(--sub-color);">Leave</button>
+        <div class="flex gap-2">
+          <button id="toggle-ready-btn" class="btn-secondary">Ready Up 👍</button>
+          <button id="start-race-btn" class="btn-primary hidden">Start Race 🏎️</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 3: Active Typing Race -->
+    <section id="race-screen" class="hidden">
+      <!-- Live Race Tracks -->
+      <div class="race-tracks-container" id="race-tracks">
+        <!-- Injected dynamically -->
+      </div>
+
+      <!-- Stats Bar & Timer -->
+      <div class="live-stats-bar">
+        <div class="flex items-center gap-4">
+          <div><span class="text-sub">wpm: </span><strong id="live-wpm" class="text-gold">0</strong></div>
+          <div><span class="text-sub">acc: </span><strong id="live-acc">100%</strong></div>
+          <div><span class="text-sub">chars: </span><strong id="live-chars">0</strong></div>
+        </div>
+        <div class="timer-display" id="race-timer">30</div>
+      </div>
+
+      <!-- Monkeytype Typing Area -->
+      <div class="words-container" id="words-container" tabindex="0">
+        <div class="caret" id="caret"></div>
+        <div id="words-display"></div>
+      </div>
+
+      <input type="text" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+      <div class="text-center text-sub mt-4" style="font-size: 0.85rem;">
+        Click the text box or press any key to focus. Backspace fixes mistakes!
+      </div>
+    </section>
+  </main>
+
+  <!-- Countdown Overlay -->
+  <div id="countdown-overlay" class="countdown-overlay hidden">
+    <div class="countdown-number" id="countdown-number">3</div>
+    <div class="text-sub mt-4" style="font-size: 1.2rem;">Get your fingers ready!</div>
+  </div>
+
+  <!-- Race Results Modal -->
+  <div id="results-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div style="font-size: 3.5rem; margin-bottom: 0.5rem;" id="results-trophy">🏆</div>
+      <h2 id="results-title" style="font-size: 2rem; margin-bottom: 0.5rem;">Race Finished!</h2>
+      <p id="results-subtitle" class="text-sub mb-4">Here is the final breakdown:</p>
+
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Racer</th>
+            <th>WPM</th>
+            <th>Accuracy</th>
+            <th>Chars</th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+
+      <div class="flex justify-center gap-4 mt-4">
+        <button id="results-lobby-btn" class="btn-secondary">Lobby</button>
+        <button id="results-again-btn" class="btn-primary">Play Again 🔁</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Message -->
+  <div id="toast">📋 Invite link copied to clipboard!</div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="audio.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "typeracer-multiplayer",
+  "version": "1.0.0",
+  "description": "Multiplayer Monkeytype-style real-time typing racer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["typing", "monkeytype", "typeracer", "multiplayer", "socketio"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
