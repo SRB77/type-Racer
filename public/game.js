@@ -35,6 +35,24 @@ const countdownNumber = document.getElementById('countdown-number');
 const resultsModal = document.getElementById('results-modal');
 const toastEl = document.getElementById('toast');
 
+// Views & Navigation Elements
+const landingView = document.getElementById('landing-view');
+const gameView = document.getElementById('game-view');
+const homeLogo = document.getElementById('home-logo');
+const backToHomeBtn = document.getElementById('back-to-home-btn');
+const navPlayBtn = document.getElementById('nav-play-btn');
+const navSoloBtn = document.getElementById('nav-solo-btn');
+const heroPlayBtn = document.getElementById('hero-play-btn');
+const ctaPlayBtn = document.getElementById('cta-play-btn');
+const demoRaceNowBtn = document.getElementById('demo-race-now-btn');
+const demoEnterGameBtn = document.getElementById('demo-enter-game-btn');
+
+// Interactive Demo Elements on Landing Page
+const demoQuoteDisplay = document.getElementById('demo-quote-display');
+const demoInputField = document.getElementById('demo-input-field');
+const demoWpm = document.getElementById('demo-wpm');
+const demoAcc = document.getElementById('demo-acc');
+
 // Inputs
 const playerNameInput = document.getElementById('player-name-input');
 const avatarGrid = document.getElementById('avatar-selector');
@@ -125,6 +143,102 @@ const urlParams = new URLSearchParams(window.location.search);
 const inviteCode = urlParams.get('room');
 if (inviteCode) {
   joinCodeInput.value = inviteCode.toUpperCase();
+}
+
+// ==========================================
+// VIEW SWITCHING (Landing Page <-> Game Area)
+// ==========================================
+
+function showGameView() {
+  window.soundController.init();
+  if (landingView) landingView.classList.add('hidden');
+  if (gameView) gameView.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showLandingView() {
+  if (gameView) gameView.classList.add('hidden');
+  if (landingView) landingView.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Connect navigation and hero buttons
+if (heroPlayBtn) heroPlayBtn.addEventListener('click', showGameView);
+if (navPlayBtn) navPlayBtn.addEventListener('click', showGameView);
+if (ctaPlayBtn) ctaPlayBtn.addEventListener('click', showGameView);
+if (demoRaceNowBtn) demoRaceNowBtn.addEventListener('click', showGameView);
+if (demoEnterGameBtn) demoEnterGameBtn.addEventListener('click', showGameView);
+if (backToHomeBtn) backToHomeBtn.addEventListener('click', showLandingView);
+if (homeLogo) homeLogo.addEventListener('click', showLandingView);
+
+if (navSoloBtn) {
+  navSoloBtn.addEventListener('click', () => {
+    showGameView();
+    startSoloRace();
+  });
+}
+
+// Auto-navigate directly to game view if entering with a room invite code
+if (inviteCode) {
+  showGameView();
+}
+
+// ==========================================
+// INTERACTIVE HERO LIVE SANDBOX (Landing Page)
+// ==========================================
+
+if (demoInputField && demoQuoteDisplay) {
+  const targetDemoQuote = "The quick brown fox jumps over the lazy dog while dreaming of endless adventures under the starlit sky.";
+  let demoStartTime = null;
+
+  function renderDemoQuote(typedText) {
+    let html = '';
+    let correctCount = 0;
+
+    for (let i = 0; i < targetDemoQuote.length; i++) {
+      const char = targetDemoQuote[i];
+      if (i < typedText.length) {
+        if (typedText[i] === char) {
+          correctCount++;
+          html += `<span class="char-done" style="color: #4ade80;">${char}</span>`;
+        } else {
+          html += `<span class="char-error" style="color: #ef4444; text-decoration: underline;">${char}</span>`;
+        }
+      } else if (i === typedText.length) {
+        html += `<span style="border-left: 2px solid var(--main-color); padding-left: 1px;">${char}</span>`;
+      } else {
+        html += `<span>${char}</span>`;
+      }
+    }
+    demoQuoteDisplay.innerHTML = html;
+
+    if (!demoStartTime && typedText.length > 0) {
+      demoStartTime = Date.now();
+    }
+
+    if (demoStartTime) {
+      const elapsedMinutes = Math.max(0.01, (Date.now() - demoStartTime) / 60000);
+      const wpm = Math.round((correctCount / 5) / elapsedMinutes);
+      const accuracy = typedText.length > 0 ? Math.round((correctCount / typedText.length) * 100) : 100;
+
+      if (demoWpm) demoWpm.textContent = wpm;
+      if (demoAcc) demoAcc.textContent = `${accuracy}%`;
+    }
+  }
+
+  renderDemoQuote('');
+
+  demoInputField.addEventListener('input', (e) => {
+    window.soundController.init();
+    window.soundController.playKeypress();
+    renderDemoQuote(e.target.value);
+  });
+
+  demoInputField.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      showGameView();
+    }
+  });
 }
 
 // Toast helper

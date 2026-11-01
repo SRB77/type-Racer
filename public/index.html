@@ -3,154 +3,427 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TypeRacer - 1v1 Multiplayer Typing</title>
+  <title>TypeRacer — 1v1 Multiplayer Typing Battles</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <!-- Canvas Confetti for celebrations -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
-<body>
+<body class="dark-theme">
 
-  <!-- Header -->
-  <header>
-    <div class="logo" id="home-logo">
-      <span>⌨️</span> Type<span>Racer</span>
-    </div>
-    <div class="header-actions">
-      <button class="btn-icon" id="sound-toggle" title="Toggle Sound">🔊</button>
-      <div id="connection-status" class="badge-tag" style="color: #4ade80;">🟢 Online</div>
+  <!-- Universal Header / Navigation -->
+  <header id="main-header" class="site-header">
+    <div class="header-inner">
+      <div class="logo" id="home-logo" title="Back to Home">
+        <span class="logo-icon">⌨️</span>
+        <span class="logo-text">Type<span class="text-gold">Racer</span></span>
+      </div>
+
+      <!-- Navigation links (visible on landing page) -->
+      <nav class="nav-links" id="desktop-nav">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#interactive-demo" class="nav-link">Live Demo</a>
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#game-modes" class="nav-link">Modes</a>
+        <a href="https://github.com/SRB77/type-Racer" target="_blank" rel="noreferrer" class="nav-link nav-external">GitHub ↗</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="btn-icon" id="sound-toggle" title="Toggle Sound">🔊</button>
+        <button id="nav-solo-btn" class="btn-ghost-sm">Solo Mode</button>
+        <button id="nav-play-btn" class="btn-primary-sm">Let's Play ⚡</button>
+        <div id="connection-status" class="badge-tag status-pill">🟢 Online</div>
+      </div>
     </div>
   </header>
 
-  <main>
-    <!-- Screen 1: Welcome & Setup -->
-    <section id="setup-screen" class="card" style="max-width: 520px; margin: 0 auto; width: 100%;">
-      <div class="text-center mb-4">
-        <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Join the Race 🏁</h2>
-        <p class="text-sub" style="font-size: 0.95rem;">A real-time typing battle for you and your favorite person 💕</p>
-      </div>
+  <!-- ============================================================== -->
+  <!-- 1. LANDING PAGE VIEW (Inspired by modern dark product landing) -->
+  <!-- ============================================================== -->
+  <div id="landing-view">
+    
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container text-center">
+        <!-- New Feature Announcement Pill -->
+        <div class="announcement-pill">
+          <span class="pill-badge">NEW</span>
+          <span class="pill-text">Multiplayer 2.0: Synchronized 1v1 race rooms & live opponent ghost tracks.</span>
+        </div>
 
-      <div class="mb-4">
-        <label class="text-sub" style="font-size: 0.85rem; font-weight: 600;">YOUR RACER NAME</label>
-        <input type="text" id="player-name-input" placeholder="Enter nickname..." maxlength="15" autocomplete="off" style="margin-top: 0.4rem;">
-      </div>
+        <!-- Main Hero Title with Editorial Serif Italic Accent -->
+        <h1 class="hero-title">
+          Typing battles for pairs who <br>
+          <span class="hero-serif-italic">race with speed</span>
+        </h1>
 
-      <div class="mb-4">
-        <label class="text-sub" style="font-size: 0.85rem; font-weight: 600;">CHOOSE YOUR AVATAR</label>
-        <div class="avatar-grid" id="avatar-selector">
-          <div class="avatar-opt selected" data-avatar="🏎️">🏎️</div>
-          <div class="avatar-opt" data-avatar="🚀">🚀</div>
-          <div class="avatar-opt" data-avatar="🐱">🐱</div>
-          <div class="avatar-opt" data-avatar="🐶">🐶</div>
-          <div class="avatar-opt" data-avatar="💖">💖</div>
-          <div class="avatar-opt" data-avatar="⚡">⚡</div>
-          <div class="avatar-opt" data-avatar="🦄">🦄</div>
-          <div class="avatar-opt" data-avatar="🎮">🎮</div>
+        <!-- Subtitle -->
+        <p class="hero-subtitle">
+          Real-time 1v1 head-to-head racing, live opponent progress streaming, and authentic Monkeytype precision. Challenge your favorite person anywhere in the world.
+        </p>
+
+        <!-- CTA Buttons -->
+        <div class="hero-cta-group">
+          <button id="hero-play-btn" class="btn-primary-hero">
+            Let's Play 1v1 🏎️
+          </button>
+          <a href="#interactive-demo" class="btn-secondary-hero">
+            Try Live Demo ↓
+          </a>
         </div>
       </div>
 
-      <div class="flex flex-col gap-2 mt-4">
-        <button id="create-room-btn" class="btn-primary w-full">Create 1v1 Room ✨</button>
+      <!-- Hero Scenic Interactive Visual (Inspired by uploaded design) -->
+      <div class="container hero-scenic-wrapper" id="interactive-demo">
+        <div class="scenic-canvas-container">
+          <!-- Scenic Background Panorama: Dark Pixel Landscape with Mountains & Pines -->
+          <div class="scenic-art-backdrop">
+            <div class="scenic-stars"></div>
+            <div class="scenic-moon"></div>
+            <div class="scenic-mountains"></div>
+            <div class="scenic-forest"></div>
+          </div>
+
+          <!-- Floating Interactive Typing Console in Center -->
+          <div class="floating-demo-console">
+            <div class="demo-console-header">
+              <div class="console-traffic-lights">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="console-title">Live Speed Sandbox — Start typing below</div>
+              <div class="console-live-stats">
+                <span>WPM: <strong id="demo-wpm" class="text-gold">0</strong></span>
+                <span>ACC: <strong id="demo-acc">100%</strong></span>
+              </div>
+            </div>
+
+            <div class="demo-console-body">
+              <div id="demo-quote-display" class="demo-quote-text">
+                The quick brown fox jumps over the lazy dog while dreaming of endless adventures under the starlit sky.
+              </div>
+              <div class="demo-input-row">
+                <input type="text" id="demo-input-field" placeholder="Click here and type to test your real-time speed..." autocomplete="off">
+                <button id="demo-race-now-btn" class="demo-launch-btn" title="Launch Full 1v1 Battle">
+                  ↑
+                </button>
+              </div>
+            </div>
+
+            <div class="demo-console-footer">
+              <span>Ready for real head-to-head competition?</span>
+              <button id="demo-enter-game-btn" class="link-btn">Create a private 1v1 room →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 Feature Highlight Cards (Exact Match with Uploaded Image Composition) -->
+        <div class="scenic-sub-cards">
+          <div class="sub-card">
+            <div class="sub-card-header">
+              <h3>WebSockets 1v1</h3>
+            </div>
+            <p>Sub-50ms synchronized race starts, live opponent ghost tracks, and instant 4-letter room codes.</p>
+            <div class="sub-card-footer">
+              <span>ROOMS</span>
+              <span class="sub-card-arrow">↗</span>
+            </div>
+          </div>
+
+          <div class="sub-card">
+            <div class="sub-card-header">
+              <h3>Monkeytype Fidelity</h3>
+            </div>
+            <p>JetBrains Mono monospace typography, floating caret geometry, and mathematically exact net WPM & accuracy.</p>
+            <div class="sub-card-footer">
+              <span>ENGINE</span>
+              <span class="sub-card-arrow">↗</span>
+            </div>
+          </div>
+
+          <div class="sub-card">
+            <div class="sub-card-header">
+              <h3>Web Audio Synthesizer</h3>
+            </div>
+            <p>Physical tactile switch clicks and victory fanfare generated procedurally with zero external audio assets.</p>
+            <div class="sub-card-footer">
+              <span>AUDIO</span>
+              <span class="sub-card-arrow">↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Live Product Race Preview -->
+    <section class="section-showcase" id="features">
+      <div class="container">
+        <div class="section-badge">REAL-TIME MULTIPLAYER</div>
+        <h2 class="section-title">See your opponent's cursor move in real-time</h2>
+        <p class="section-subtitle">
+          No delayed submissions or fake bots. Watch your partner's racer slide along the track keystroke by keystroke with live speed readouts.
+        </p>
+
+        <!-- Simulated Live Race Track Experience -->
+        <div class="showcase-mock-track card">
+          <div class="mock-track-row">
+            <div class="mock-track-meta">
+              <span class="mock-avatar">🏎️</span>
+              <span class="mock-name">You (Host)</span>
+              <span class="mock-wpm text-gold">86 WPM</span>
+              <span class="mock-acc text-sub">99% ACC</span>
+            </div>
+            <div class="mock-rail">
+              <div class="mock-fill" style="width: 78%;"></div>
+              <div class="mock-runner" style="left: 78%;">🏎️</div>
+              <span class="mock-flag">🏁</span>
+            </div>
+          </div>
+
+          <div class="mock-track-row mt-4">
+            <div class="mock-track-meta">
+              <span class="mock-avatar">💖</span>
+              <span class="mock-name">Her (Challenger)</span>
+              <span class="mock-wpm text-gold">91 WPM</span>
+              <span class="mock-acc text-sub">98% ACC</span>
+            </div>
+            <div class="mock-rail">
+              <div class="mock-fill" style="width: 85%; background: linear-gradient(90deg, rgba(244, 114, 182, 0.2), rgba(244, 114, 182, 0.5));"></div>
+              <div class="mock-runner" style="left: 85%;">💖</div>
+              <span class="mock-flag">🏁</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: How It Works (3 Steps) -->
+    <section class="section-steps" id="how-it-works">
+      <div class="container">
+        <div class="section-badge">SIMPLE & FAST</div>
+        <h2 class="section-title">From zero to racing in 10 seconds</h2>
+        <p class="section-subtitle">Zero signups, zero installation. Just create a room and send the link.</p>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-num">01</div>
+            <h3>Create a Private Room</h3>
+            <p>Pick your racer avatar and nickname. Generate a unique code (like <code>LOVE-42</code>) and click copy invite link.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">02</div>
+            <h3>Synchronized Countdown</h3>
+            <p>Both racers ready up. The server broadcasts a 3.. 2.. 1.. GO audio chime so you both start at the exact same millisecond.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">03</div>
+            <h3>Confetti & Final Matrix</h3>
+            <p>The winner is crowned with confetti. Review your 4-column Monkeytype Hero Matrix and hit instant Rematch.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Game Modes Showcase -->
+    <section class="section-modes" id="game-modes">
+      <div class="container">
+        <div class="section-badge">VERSATILE MODES</div>
+        <h2 class="section-title">Engineered for every typing rhythm</h2>
         
-        <div class="flex items-center gap-2 my-2" style="color: var(--sub-color); font-size: 0.85rem;">
-          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
-          <span>OR ENTER CODE</span>
-          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
-        </div>
-
-        <div class="flex gap-2">
-          <input type="text" id="join-code-input" placeholder="CODE (e.g. LOVE-42)" style="text-transform: uppercase;">
-          <button id="join-room-btn" class="btn-secondary" style="white-space: nowrap;">Join</button>
-        </div>
-
-        <button id="solo-practice-btn" class="btn-secondary w-full mt-4" style="border-style: dashed;">
-          ⚡ Solo Practice Mode
-        </button>
-      </div>
-    </section>
-
-    <!-- Screen 2: Room Lobby -->
-    <section id="lobby-screen" class="card hidden" style="max-width: 650px; margin: 0 auto; width: 100%;">
-      <div class="flex justify-between items-center mb-4">
-        <div>
-          <span class="text-sub" style="font-size: 0.85rem;">ROOM CODE</span>
-          <h2 id="room-code-display" class="text-gold" style="font-size: 2rem; letter-spacing: 2px;">----</h2>
-        </div>
-        <button id="copy-link-btn" class="btn-secondary" style="font-size: 0.9rem; padding: 0.6rem 1rem;">
-          📋 Copy Invite Link
-        </button>
-      </div>
-
-      <!-- Settings (Host only controls) -->
-      <div id="host-settings" class="config-bar">
-        <div class="config-group">
-          <span class="text-sub">time:</span>
-          <button class="config-btn active" data-time="15">15</button>
-          <button class="config-btn" data-time="30">30</button>
-          <button class="config-btn" data-time="60">60</button>
-        </div>
-        <div style="width: 1px; height: 16px; background: var(--border-color);"></div>
-        <div class="config-group">
-          <span class="text-sub">mode:</span>
-          <button class="config-btn active" data-mode="quote">quotes</button>
-          <button class="config-btn" data-mode="words">words</button>
-        </div>
-      </div>
-
-      <!-- Racers in room -->
-      <div class="mb-4">
-        <div class="text-sub mb-2" style="font-size: 0.85rem;">RACERS IN LOBBY</div>
-        <div id="racers-lobby-list" class="flex flex-col gap-2">
-          <!-- Dynamically populated -->
-        </div>
-      </div>
-
-      <div class="flex justify-between items-center mt-4">
-        <button id="leave-room-btn" class="btn-secondary" style="color: var(--sub-color);">Leave</button>
-        <div class="flex gap-2">
-          <button id="toggle-ready-btn" class="btn-secondary">Ready Up 👍</button>
-          <button id="start-race-btn" class="btn-primary hidden">Start Race 🏎️</button>
+        <div class="modes-grid">
+          <div class="mode-item">
+            <div class="mode-icon">⚡</div>
+            <h4>15s Blitz</h4>
+            <p>Fast burst speed sprint. Test raw reflexes and pure finger velocity.</p>
+          </div>
+          <div class="mode-item">
+            <div class="mode-icon">⏱️</div>
+            <h4>30s Classic</h4>
+            <p>The standard tournament mode. Balanced balance between speed and precision.</p>
+          </div>
+          <div class="mode-item">
+            <div class="mode-icon">🔥</div>
+            <h4>60s Endurance</h4>
+            <p>Deep concentration test. Maintain high accuracy through full fatigue resistance.</p>
+          </div>
+          <div class="mode-item">
+            <div class="mode-icon">📖</div>
+            <h4>Literary Quotes</h4>
+            <p>Large paragraph excerpts from Carl Sagan, Jane Austen, Gatsby, and Tolkien.</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Screen 3: Active Typing Race -->
-    <section id="race-screen" class="hidden">
-      <!-- Live Race Tracks -->
-      <div class="race-tracks-container" id="race-tracks">
-        <!-- Injected dynamically -->
-      </div>
-
-      <!-- Finished Waiting Notification (Appears when you complete your text before opponent) -->
-      <div id="finish-waiting-badge" class="finish-waiting-card hidden">
-        <span>🏁 You finished typing in <strong id="your-finish-time" class="text-gold">0s</strong>! (<span id="finish-badge-stats">0 WPM, 100% Acc</span>) Waiting for opponent to conclude...</span>
-      </div>
-
-      <!-- Stats Bar & Timer -->
-      <div class="live-stats-bar">
-        <div class="flex items-center gap-4">
-          <div><span class="text-sub">wpm: </span><strong id="live-wpm" class="text-gold">0</strong></div>
-          <div><span class="text-sub">acc: </span><strong id="live-acc">100%</strong></div>
-          <div><span class="text-sub">chars: </span><strong id="live-chars">0</strong></div>
+    <!-- Section 5: Bottom CTA Banner -->
+    <section class="section-cta">
+      <div class="container">
+        <div class="cta-box card">
+          <div class="cta-inner text-center">
+            <span class="cta-emoji">🏁</span>
+            <h2 class="cta-title">Ready to challenge your favorite person?</h2>
+            <p class="cta-desc">Pick your nickname, invite your partner, and find out who has the fastest fingers.</p>
+            <button id="cta-play-btn" class="btn-primary-hero mt-4">
+              Enter Typing Arena Now →
+            </button>
+          </div>
         </div>
-        <div class="timer-display" id="race-timer">30</div>
-      </div>
-
-      <!-- Monkeytype Typing Area -->
-      <div class="words-container" id="words-container" tabindex="0">
-        <div class="caret" id="caret"></div>
-        <div id="words-display"></div>
-      </div>
-
-      <input type="text" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-
-      <div class="text-center text-sub mt-4" style="font-size: 0.85rem;">
-        Click the text box or press any key to focus. Backspace fixes mistakes!
       </div>
     </section>
-  </main>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+      <div class="container footer-content">
+        <div class="footer-left">
+          <div class="footer-logo">⌨️ Type<span>Racer</span></div>
+          <p class="footer-tagline">Crafted with 💕 for real-time competitive couples & duos.</p>
+        </div>
+        <div class="footer-right">
+          <a href="https://github.com/SRB77/type-Racer" target="_blank" rel="noreferrer">GitHub Repository</a>
+          <a href="#main-header">Back to Top ↑</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 2. GAME AREA VIEW (The Original Unaltered Arena Screens)       -->
+  <!-- ============================================================== -->
+  <div id="game-view" class="hidden">
+    <div class="game-top-bar">
+      <button id="back-to-home-btn" class="btn-ghost-sm">← Back to Home</button>
+      <div class="game-bar-title">TYPING ARENA</div>
+    </div>
+
+    <main id="game-main-content">
+      <!-- Screen 1: Welcome & Setup -->
+      <section id="setup-screen" class="card" style="max-width: 520px; margin: 0 auto; width: 100%;">
+        <div class="text-center mb-4">
+          <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Join the Race 🏁</h2>
+          <p class="text-sub" style="font-size: 0.95rem;">A real-time typing battle for you and your favorite person 💕</p>
+        </div>
+
+        <div class="mb-4">
+          <label class="text-sub" style="font-size: 0.85rem; font-weight: 600;">YOUR RACER NAME</label>
+          <input type="text" id="player-name-input" placeholder="Enter nickname..." maxlength="15" autocomplete="off" style="margin-top: 0.4rem;">
+        </div>
+
+        <div class="mb-4">
+          <label class="text-sub" style="font-size: 0.85rem; font-weight: 600;">CHOOSE YOUR AVATAR</label>
+          <div class="avatar-grid" id="avatar-selector">
+            <div class="avatar-opt selected" data-avatar="🏎️">🏎️</div>
+            <div class="avatar-opt" data-avatar="🚀">🚀</div>
+            <div class="avatar-opt" data-avatar="🐱">🐱</div>
+            <div class="avatar-opt" data-avatar="🐶">🐶</div>
+            <div class="avatar-opt" data-avatar="💖">💖</div>
+            <div class="avatar-opt" data-avatar="⚡">⚡</div>
+            <div class="avatar-opt" data-avatar="🦄">🦄</div>
+            <div class="avatar-opt" data-avatar="🎮">🎮</div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2 mt-4">
+          <button id="create-room-btn" class="btn-primary w-full">Create 1v1 Room ✨</button>
+          
+          <div class="flex items-center gap-2 my-2" style="color: var(--sub-color); font-size: 0.85rem;">
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            <span>OR ENTER CODE</span>
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+          </div>
+
+          <div class="flex gap-2">
+            <input type="text" id="join-code-input" placeholder="CODE (e.g. LOVE-42)" style="text-transform: uppercase;">
+            <button id="join-room-btn" class="btn-secondary" style="white-space: nowrap;">Join</button>
+          </div>
+
+          <button id="solo-practice-btn" class="btn-secondary w-full mt-4" style="border-style: dashed;">
+            ⚡ Solo Practice Mode
+          </button>
+        </div>
+      </section>
+
+      <!-- Screen 2: Room Lobby -->
+      <section id="lobby-screen" class="card hidden" style="max-width: 650px; margin: 0 auto; width: 100%;">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <span class="text-sub" style="font-size: 0.85rem;">ROOM CODE</span>
+            <h2 id="room-code-display" class="text-gold" style="font-size: 2rem; letter-spacing: 2px;">----</h2>
+          </div>
+          <button id="copy-link-btn" class="btn-secondary" style="font-size: 0.9rem; padding: 0.6rem 1rem;">
+            📋 Copy Invite Link
+          </button>
+        </div>
+
+        <!-- Settings (Host only controls) -->
+        <div id="host-settings" class="config-bar">
+          <div class="config-group">
+            <span class="text-sub">time:</span>
+            <button class="config-btn active" data-time="15">15</button>
+            <button class="config-btn" data-time="30">30</button>
+            <button class="config-btn" data-time="60">60</button>
+          </div>
+          <div style="width: 1px; height: 16px; background: var(--border-color);"></div>
+          <div class="config-group">
+            <span class="text-sub">mode:</span>
+            <button class="config-btn active" data-mode="quote">quotes</button>
+            <button class="config-btn" data-mode="words">words</button>
+          </div>
+        </div>
+
+        <!-- Racers in room -->
+        <div class="mb-4">
+          <div class="text-sub mb-2" style="font-size: 0.85rem;">RACERS IN LOBBY</div>
+          <div id="racers-lobby-list" class="flex flex-col gap-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center mt-4">
+          <button id="leave-room-btn" class="btn-secondary" style="color: var(--sub-color);">Leave</button>
+          <div class="flex gap-2">
+            <button id="toggle-ready-btn" class="btn-secondary">Ready Up 👍</button>
+            <button id="start-race-btn" class="btn-primary hidden">Start Race 🏎️</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Screen 3: Active Typing Race -->
+      <section id="race-screen" class="hidden">
+        <!-- Live Race Tracks -->
+        <div class="race-tracks-container" id="race-tracks">
+          <!-- Injected dynamically -->
+        </div>
+
+        <!-- Finished Waiting Notification -->
+        <div id="finish-waiting-badge" class="finish-waiting-card hidden">
+          <span>🏁 You finished typing in <strong id="your-finish-time" class="text-gold">0s</strong>! (<span id="finish-badge-stats">0 WPM, 100% Acc</span>) Waiting for opponent to conclude...</span>
+        </div>
+
+        <!-- Stats Bar & Timer -->
+        <div class="live-stats-bar">
+          <div class="flex items-center gap-4">
+            <div><span class="text-sub">wpm: </span><strong id="live-wpm" class="text-gold">0</strong></div>
+            <div><span class="text-sub">acc: </span><strong id="live-acc">100%</strong></div>
+            <div><span class="text-sub">chars: </span><strong id="live-chars">0</strong></div>
+          </div>
+          <div class="timer-display" id="race-timer">30</div>
+        </div>
+
+        <!-- Monkeytype Typing Area -->
+        <div class="words-container" id="words-container" tabindex="0">
+          <div class="caret" id="caret"></div>
+          <div id="words-display"></div>
+        </div>
+
+        <input type="text" id="hidden-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+        <div class="text-center text-sub mt-4" style="font-size: 0.85rem;">
+          Click the text box or press any key to focus. Backspace fixes mistakes!
+        </div>
+      </section>
+    </main>
+  </div>
 
   <!-- Countdown Overlay -->
   <div id="countdown-overlay" class="countdown-overlay hidden">
