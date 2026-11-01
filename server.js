@@ -9,6 +9,11 @@ const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Health check endpoint for Railway/Render
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -20,7 +25,7 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 
 // Rooms storage
-// roomCode -> { code, hostId, timeLimit, mode, passage, status, players: { [id]: player } }
+// roomCode -> room object
 const rooms = new Map();
 
 // Room code generator
@@ -31,35 +36,45 @@ function generateRoomCode() {
   return `${word}-${num}`;
 }
 
+function createPlayerObject(socketId, name, avatar) {
+  return {
+    id: socketId,
+    name: (name || 'Racer').trim().slice(0, 15),
+    avatar: avatar || '🏎️',
+    ready: false,
+    progress: 0,
+    typedChars: 0,
+    correctChars: 0,
+    incorrectChars: 0,
+    wpm: 0,
+    rawWpm: 0,
+    accuracy: 100,
+    timeTaken: 0,
+    finished: false,
+    rank: null
+  };
+}
+
 io.on('connection', (socket) => {
   console.log(`[Socket Connected] ${socket.id}`);
 
   // Create a new room
   socket.on('create_room', ({ playerName, avatar, timeLimit = 30, mode = 'quote' }) => {
     const roomCode = generateRoomCode();
-    const player = {
-      id: socket.id,
-      name: (playerName || 'Player 1').trim().slice(0, 15),
-      avatar: avatar || '🏎️',
-      ready: true,
-      progress: 0,
-      typedChars: 0,
-      correctChars: 0,
-      wpm: 0,
-      accuracy: 100,
-      finished: false,
-      rank: null
-    };
+    const player = createPlayerObject(socket.id, playerName || 'Player 1', avatar || '🏎️');
+    player.ready = true; // Host is ready by default
 
     const room = {
       code: roomCode,
       hostId: socket.id,
       timeLimit: parseInt(timeLimit, 10) || 30,
-      mode: mode || 'quote', // 'quote' or 'timed'
+      mode: mode || 'quote',
       passage: '',
       status: 'waiting', // 'waiting' | 'countdown' | 'racing' | 'finished'
       players: { [socket.id]: player },
-      timerInterval: null
+      timerInterval: null,
+      ranksCount: 0,
+      startTime: null
     };
 
     rooms.set(roomCode, room);
@@ -85,26 +100,14 @@ io.on('connection', (socket) => {
     }
 
     if (Object.keys(room.players).length >= 4) {
-      return socket.emit('error_message', { message: 'Room is currently full (max 4 racers)!' });
+      return socket.emit('error_message', { message: 'Room is full (max 4 racers)!' });
     }
 
     if (room.status === 'racing' || room.status === 'countdown') {
-      return socket.emit('error_message', { message: 'Race already in progress! Please wait for next round.' });
+      return socket.emit('error_message', { message: 'Race already in progress! Please wait for the next round.' });
     }
 
-    const player = {
-      id: socket.id,
-      name: (playerName || `Racer ${Object.keys(room.players).length + 1}`).trim().slice(0, 15),
-      avatar: avatar || '🚀',
-      ready: false,
-      progress: 0,
-      typedChars: 0,
-      correctChars: 0,
-      wpm: 0,
-      accuracy: 100,
-      finished: false,
-      rank: null
-    };
+    const player = createPlayerObject(socket.id, playerName || `Racer ${Object.keys(room.players).length + 1}`, avatar || '🚀');
 
     room.players[socket.id] = player;
     socket.join(code);
@@ -116,7 +119,6 @@ io.on('connection', (socket) => {
       roomState: sanitizeRoomState(room)
     });
 
-    // Notify others in room
     io.to(code).emit('room_updated', sanitizeRoomState(room));
     console.log(`[Room Joined] ${code} by ${player.name}`);
   });
@@ -152,8 +154,11 @@ io.on('connection', (socket) => {
       p.progress = 0;
       p.typedChars = 0;
       p.correctChars = 0;
+      p.incorrectChars = 0;
       p.wpm = 0;
+      p.rawWpm = 0;
       p.accuracy = 100;
+      p.timeTaken = 0;
       p.finished = false;
       p.rank = null;
     });
@@ -182,7 +187,7 @@ io.on('connection', (socket) => {
           players: room.players
         });
 
-        // If time-based countdown, run server ticker
+        // Run server race timer
         let remaining = room.timeLimit;
         if (room.timerInterval) clearInterval(room.timerInterval);
 
@@ -200,7 +205,7 @@ io.on('connection', (socket) => {
   });
 
   // Real-time progress update from player
-  socket.on('typing_progress', ({ progress, typedChars, correctChars, wpm, accuracy }) => {
+  socket.on('typing_progress', ({ progress, typedChars, correctChars, incorrectChars, wpm, rawWpm, accuracy }) => {
     const room = rooms.get(socket.roomCode);
     if (!room || room.status !== 'racing') return;
 
@@ -208,39 +213,61 @@ io.on('connection', (socket) => {
     if (!player || player.finished) return;
 
     player.progress = Math.min(100, Math.max(0, Math.round(progress)));
-    player.typedChars = typedChars;
-    player.correctChars = correctChars;
-    player.wpm = Math.max(0, Math.round(wpm));
-    player.accuracy = Math.round(accuracy);
+    player.typedChars = typedChars || 0;
+    player.correctChars = correctChars || 0;
+    player.incorrectChars = incorrectChars || 0;
+    player.wpm = Math.max(0, Math.round(wpm || 0));
+    player.rawWpm = Math.max(0, Math.round(rawWpm || 0));
+    player.accuracy = Math.round(accuracy || 100);
 
-    // Broadcast to room
+    // Broadcast live stats to opponents
     io.to(room.code).emit('opponent_progress', {
       playerId: socket.id,
       progress: player.progress,
       wpm: player.wpm,
+      rawWpm: player.rawWpm,
       accuracy: player.accuracy,
-      typedChars: player.typedChars
+      typedChars: player.typedChars,
+      correctChars: player.correctChars
+    });
+  });
+
+  // Explicit player finished event (locks in their final metrics)
+  socket.on('player_finished_typing', ({ wpm, rawWpm, accuracy, correctChars, incorrectChars, totalChars, timeTaken }) => {
+    const room = rooms.get(socket.roomCode);
+    if (!room || room.status !== 'racing') return;
+
+    const player = room.players[socket.id];
+    if (!player || player.finished) return;
+
+    player.finished = true;
+    player.progress = 100;
+    player.wpm = Math.max(0, Math.round(wpm || 0));
+    player.rawWpm = Math.max(0, Math.round(rawWpm || 0));
+    player.accuracy = Math.round(accuracy || 100);
+    player.correctChars = correctChars || 0;
+    player.incorrectChars = incorrectChars || 0;
+    player.typedChars = totalChars || 0;
+    player.timeTaken = timeTaken || 0;
+
+    room.ranksCount = (room.ranksCount || 0) + 1;
+    player.rank = room.ranksCount;
+
+    // Broadcast that this player finished
+    io.to(room.code).emit('player_finished', {
+      playerId: socket.id,
+      rank: player.rank,
+      wpm: player.wpm,
+      rawWpm: player.rawWpm,
+      accuracy: player.accuracy,
+      timeTaken: player.timeTaken
     });
 
-    // Check if player completed 100%
-    if (player.progress >= 100 && !player.finished) {
-      player.finished = true;
-      room.ranksCount = (room.ranksCount || 0) + 1;
-      player.rank = room.ranksCount;
-
-      io.to(room.code).emit('player_finished', {
-        playerId: socket.id,
-        rank: player.rank,
-        wpm: player.wpm,
-        accuracy: player.accuracy
-      });
-
-      // Check if all players finished
-      const allFinished = Object.values(room.players).every(p => p.finished);
-      if (allFinished) {
-        if (room.timerInterval) clearInterval(room.timerInterval);
-        finishRace(room);
-      }
+    // Check if all players in the room are finished
+    const allFinished = Object.values(room.players).every(p => p.finished);
+    if (allFinished) {
+      if (room.timerInterval) clearInterval(room.timerInterval);
+      finishRace(room);
     }
   });
 
@@ -257,8 +284,11 @@ io.on('connection', (socket) => {
       p.progress = 0;
       p.typedChars = 0;
       p.correctChars = 0;
+      p.incorrectChars = 0;
       p.wpm = 0;
+      p.rawWpm = 0;
       p.accuracy = 100;
+      p.timeTaken = 0;
       p.finished = false;
       p.rank = null;
     });
@@ -283,7 +313,6 @@ io.on('connection', (socket) => {
       rooms.delete(code);
       console.log(`[Room Deleted] ${code}`);
     } else {
-      // Reassign host if host left
       if (room.hostId === socket.id) {
         room.hostId = remainingPlayers[0];
       }
@@ -292,12 +321,23 @@ io.on('connection', (socket) => {
         newHostId: room.hostId,
         roomState: sanitizeRoomState(room)
       });
+
+      // If race was running and remaining players are all finished, finalize
+      if (room.status === 'racing') {
+        const allFinished = Object.values(room.players).every(p => p.finished);
+        if (allFinished) {
+          if (room.timerInterval) clearInterval(room.timerInterval);
+          finishRace(room);
+        }
+      }
     }
   });
 });
 
 function finishRace(room) {
   room.status = 'finished';
+
+  const elapsedTotal = room.startTime ? Math.round((Date.now() - room.startTime) / 1000) : room.timeLimit;
 
   // Sort and assign ranks to unfinished players based on progress & wpm
   const sorted = Object.values(room.players).sort((a, b) => {
@@ -310,6 +350,7 @@ function finishRace(room) {
 
   sorted.forEach((p, idx) => {
     if (!p.rank) p.rank = idx + 1;
+    if (!p.timeTaken) p.timeTaken = elapsedTotal;
   });
 
   io.to(room.code).emit('race_finished', {
@@ -328,6 +369,17 @@ function sanitizeRoomState(room) {
     players: room.players
   };
 }
+
+// Graceful termination for production
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => process.exit(0));
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT signal received: closing HTTP server');
+  server.close(() => process.exit(0));
+});
 
 server.listen(PORT, () => {
   console.log(`🚀 TypeRacer Server running at http://localhost:${PORT}`);

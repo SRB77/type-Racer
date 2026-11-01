@@ -123,6 +123,11 @@
         <!-- Injected dynamically -->
       </div>
 
+      <!-- Finished Waiting Notification (Appears when you complete your text before opponent) -->
+      <div id="finish-waiting-badge" class="finish-waiting-card hidden">
+        <span>🏁 You finished typing in <strong id="your-finish-time" class="text-gold">0s</strong>! (<span id="finish-badge-stats">0 WPM, 100% Acc</span>) Waiting for opponent to conclude...</span>
+      </div>
+
       <!-- Stats Bar & Timer -->
       <div class="live-stats-bar">
         <div class="flex items-center gap-4">
@@ -153,30 +158,72 @@
     <div class="text-sub mt-4" style="font-size: 1.2rem;">Get your fingers ready!</div>
   </div>
 
-  <!-- Race Results Modal -->
+  <!-- Race Results Modal (Final Matrix) -->
   <div id="results-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-      <div style="font-size: 3.5rem; margin-bottom: 0.5rem;" id="results-trophy">🏆</div>
-      <h2 id="results-title" style="font-size: 2rem; margin-bottom: 0.5rem;">Race Finished!</h2>
-      <p id="results-subtitle" class="text-sub mb-4">Here is the final breakdown:</p>
+    <div class="modal-content results-modal-card">
+      <div class="text-center">
+        <div style="font-size: 3.2rem; margin-bottom: 0.25rem;" id="results-trophy">🏆</div>
+        <h2 id="results-title" style="font-size: 1.8rem; margin-bottom: 0.25rem;">Race Finished!</h2>
+        <p id="results-subtitle" class="text-sub mb-4" style="font-size: 0.95rem;">Here is your performance matrix:</p>
+      </div>
 
-      <table class="results-table">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Racer</th>
-            <th>WPM</th>
-            <th>Accuracy</th>
-            <th>Chars</th>
-          </tr>
-        </thead>
-        <tbody id="results-tbody">
-          <!-- Dynamically populated -->
-        </tbody>
-      </table>
+      <!-- Monkeytype-Style Hero Matrix Grid -->
+      <div class="matrix-grid">
+        <div class="matrix-card">
+          <span class="matrix-label">WPM</span>
+          <span class="matrix-value text-gold" id="matrix-wpm">0</span>
+          <span class="matrix-sub" id="matrix-raw-wpm">raw: 0</span>
+        </div>
+        <div class="matrix-card">
+          <span class="matrix-label">ACCURACY</span>
+          <span class="matrix-value" id="matrix-acc">100%</span>
+          <span class="matrix-sub" id="matrix-acc-sub">precision</span>
+        </div>
+        <div class="matrix-card">
+          <span class="matrix-label">CHARACTERS</span>
+          <span class="matrix-value" id="matrix-chars">0</span>
+          <span class="matrix-sub" id="matrix-chars-breakdown">0 / 0</span>
+        </div>
+        <div class="matrix-card">
+          <span class="matrix-label">TIME</span>
+          <span class="matrix-value" id="matrix-time">0s</span>
+          <span class="matrix-sub" id="matrix-time-sub">duration</span>
+        </div>
+      </div>
 
-      <div class="flex justify-center gap-4 mt-4">
+      <!-- 1v1 Head-to-Head Comparison (Multiplayer) -->
+      <div id="head-to-head-container" class="head-to-head-section hidden">
+        <div class="text-sub mb-2 text-center" style="font-size: 0.85rem; font-weight: 700; letter-spacing: 0.05em;">
+          HEAD-TO-HEAD SHOWDOWN
+        </div>
+        <div id="head-to-head-cards" class="flex flex-col gap-2">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Detailed Breakdown Table -->
+      <div class="table-container mt-4">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Racer</th>
+              <th>Net WPM</th>
+              <th>Accuracy</th>
+              <th>Chars</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-center gap-2 mt-4 flex-wrap">
         <button id="results-lobby-btn" class="btn-secondary">Lobby</button>
+        <button id="copy-stats-btn" class="btn-secondary">📋 Share Stats</button>
         <button id="results-again-btn" class="btn-primary">Play Again 🔁</button>
       </div>
     </div>

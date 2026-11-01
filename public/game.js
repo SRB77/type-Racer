@@ -1,4 +1,4 @@
-// TypeRacer Multiplayer Client Engine
+// TypeRacer Multiplayer Client Engine - Production Ready
 
 const socket = io();
 
@@ -15,13 +15,14 @@ let isSolo = false;
 // Typing Game State
 let passageText = "";
 let currentIndex = 0;
-let userInputs = []; // array of { char, status: 'correct'|'incorrect' }
+let userInputs = []; // array of { char, correct }
 let startTime = null;
-let totalTypedCount = 0;
-let correctTypedCount = 0;
+let finishTime = null;
+let totalKeypresses = 0;
 let isRacing = false;
-let raceInterval = null;
+let hasFinishedCurrentRace = false;
 let soloTimer = null;
+let lastResults = null;
 
 // DOM Elements
 const soundToggleBtn = document.getElementById('sound-toggle');
@@ -53,6 +54,9 @@ const leaveRoomBtn = document.getElementById('leave-room-btn');
 
 // Race Elements
 const raceTracks = document.getElementById('race-tracks');
+const finishWaitingBadge = document.getElementById('finish-waiting-badge');
+const yourFinishTime = document.getElementById('your-finish-time');
+const finishBadgeStats = document.getElementById('finish-badge-stats');
 const raceTimer = document.getElementById('race-timer');
 const liveWpm = document.getElementById('live-wpm');
 const liveAcc = document.getElementById('live-acc');
@@ -62,12 +66,22 @@ const wordsDisplay = document.getElementById('words-display');
 const caret = document.getElementById('caret');
 const hiddenInput = document.getElementById('hidden-input');
 
-// Results Elements
+// Matrix & Results Elements
 const resultsTrophy = document.getElementById('results-trophy');
 const resultsTitle = document.getElementById('results-title');
+const resultsSubtitle = document.getElementById('results-subtitle');
+const matrixWpm = document.getElementById('matrix-wpm');
+const matrixRawWpm = document.getElementById('matrix-raw-wpm');
+const matrixAcc = document.getElementById('matrix-acc');
+const matrixChars = document.getElementById('matrix-chars');
+const matrixCharsBreakdown = document.getElementById('matrix-chars-breakdown');
+const matrixTime = document.getElementById('matrix-time');
+const headToHeadContainer = document.getElementById('head-to-head-container');
+const headToHeadCards = document.getElementById('head-to-head-cards');
 const resultsTbody = document.getElementById('results-tbody');
 const resultsAgainBtn = document.getElementById('results-again-btn');
 const resultsLobbyBtn = document.getElementById('results-lobby-btn');
+const copyStatsBtn = document.getElementById('copy-stats-btn');
 
 // Initialize UI
 if (currentUser.name) {
@@ -246,7 +260,6 @@ socket.on('countdown_start', ({ count }) => {
 
 socket.on('countdown_tick', ({ count }) => {
   countdownNumber.textContent = count;
-  // Trigger animation replay
   countdownNumber.style.animation = 'none';
   void countdownNumber.offsetHeight;
   countdownNumber.style.animation = 'popScale 0.6s ease-out';
@@ -312,7 +325,6 @@ socket.on('player_left', ({ leftPlayerId, newHostId, roomState }) => {
 function updateLobbyUI(room) {
   roomCodeDisplay.textContent = room.code;
 
-  // Update Settings Pills
   document.querySelectorAll('#host-settings [data-time]').forEach(b => {
     b.classList.toggle('active', parseInt(b.dataset.time, 10) === room.timeLimit);
     b.style.pointerEvents = isHost ? 'auto' : 'none';
@@ -322,7 +334,6 @@ function updateLobbyUI(room) {
     b.style.pointerEvents = isHost ? 'auto' : 'none';
   });
 
-  // Host buttons
   if (isHost) {
     startRaceBtn.classList.remove('hidden');
     toggleReadyBtn.classList.add('hidden');
@@ -331,7 +342,6 @@ function updateLobbyUI(room) {
     toggleReadyBtn.classList.remove('hidden');
   }
 
-  // Render Racers List
   racersLobbyList.innerHTML = '';
   const players = Object.values(room.players);
 
@@ -371,15 +381,17 @@ function setupRace(passage, duration, players) {
   currentIndex = 0;
   userInputs = [];
   startTime = Date.now();
-  totalTypedCount = 0;
-  correctTypedCount = 0;
+  finishTime = null;
+  totalKeypresses = 0;
   isRacing = true;
+  hasFinishedCurrentRace = false;
 
+  finishWaitingBadge.classList.add('hidden');
   raceTimer.textContent = duration;
   raceTimer.style.color = 'var(--main-color)';
   liveWpm.textContent = '0';
   liveAcc.textContent = '100%';
-  liveChars.textContent = '0';
+  liveChars.textContent = '0/0';
 
   // Render Racers Tracks
   raceTracks.innerHTML = '';
@@ -409,10 +421,8 @@ function setupRace(passage, duration, players) {
     raceTracks.appendChild(track);
   });
 
-  // Render Passage text into character spans
   renderPassageText();
 
-  // Focus hidden input
   hiddenInput.value = '';
   hiddenInput.focus();
   updateCaretPosition();
@@ -438,7 +448,6 @@ function renderPassageText() {
       globalCharIdx++;
     }
 
-    // Space after word (except last word)
     if (wordIdx < words.length - 1) {
       const spaceSpan = document.createElement('span');
       spaceSpan.className = 'letter';
@@ -462,7 +471,6 @@ function updateCaretPosition() {
     caret.style.top = `${rect.top - containerRect.top}px`;
     caret.style.height = `${rect.height}px`;
   } else if (currentIndex >= passageText.length) {
-    // Caret at the end
     const lastChar = document.getElementById(`char-${passageText.length - 1}`);
     if (lastChar) {
       const rect = lastChar.getBoundingClientRect();
@@ -474,9 +482,8 @@ function updateCaretPosition() {
   }
 }
 
-// Ensure clicking container focuses hidden input
 wordsContainer.addEventListener('click', () => {
-  hiddenInput.focus();
+  if (isRacing) hiddenInput.focus();
 });
 document.addEventListener('keydown', (e) => {
   if (isRacing && document.activeElement !== hiddenInput) {
@@ -484,11 +491,35 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Accurate Metrics Calculation
+function calculateCurrentMetrics() {
+  const elapsedSeconds = Math.max(0.5, ((finishTime || Date.now()) - startTime) / 1000);
+  const elapsedMinutes = elapsedSeconds / 60;
+
+  const correctChars = userInputs.filter(u => u.correct).length;
+  const incorrectChars = userInputs.filter(u => !u.correct).length;
+
+  const netWpm = Math.max(0, Math.round((correctChars / 5) / elapsedMinutes));
+  const rawWpm = Math.max(0, Math.round((totalKeypresses / 5) / elapsedMinutes));
+  const accuracy = totalKeypresses > 0 ? Math.min(100, Math.max(0, Math.round((correctChars / totalKeypresses) * 100))) : 100;
+  const progress = Math.min(100, Math.max(0, Math.round((currentIndex / passageText.length) * 100)));
+
+  return {
+    netWpm,
+    rawWpm,
+    accuracy,
+    correctChars,
+    incorrectChars,
+    totalChars: totalKeypresses,
+    progress,
+    elapsedSeconds: Math.round(elapsedSeconds)
+  };
+}
+
 // Keystroke handler
 hiddenInput.addEventListener('keydown', (e) => {
-  if (!isRacing) return;
+  if (!isRacing || hasFinishedCurrentRace) return;
 
-  // Ignore navigation/meta keys
   if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'Tab') {
     return;
   }
@@ -503,20 +534,19 @@ hiddenInput.addEventListener('keydown', (e) => {
         charEl.className = 'letter';
       }
       userInputs.pop();
-      updateStats();
+      updateLiveStatsDisplay();
       updateCaretPosition();
-      sendProgressUpdate();
+      broadcastProgress();
     }
     return;
   }
 
   if (e.key.length === 1) {
     e.preventDefault();
-    totalTypedCount++;
+    totalKeypresses++;
 
     const isCorrect = (e.key === expectedChar);
     if (isCorrect) {
-      correctTypedCount++;
       window.soundController.playKeypress();
     } else {
       window.soundController.playError();
@@ -530,31 +560,25 @@ hiddenInput.addEventListener('keydown', (e) => {
     userInputs.push({ char: e.key, correct: isCorrect });
     currentIndex++;
 
-    updateStats();
+    updateLiveStatsDisplay();
     updateCaretPosition();
-    sendProgressUpdate();
+    broadcastProgress();
 
-    // Check if finished passage
+    // Check if player completed entire text
     if (currentIndex >= passageText.length) {
-      if (isSolo) {
-        finishSoloRace();
-      }
+      handlePlayerCompletion();
     }
   }
 });
 
-function updateStats() {
-  const elapsedMinutes = Math.max(0.01, (Date.now() - startTime) / 60000);
-  const wpm = Math.round((correctTypedCount / 5) / elapsedMinutes);
-  const accuracy = totalTypedCount > 0 ? Math.round((correctTypedCount / totalTypedCount) * 100) : 100;
+function updateLiveStatsDisplay() {
+  const metrics = calculateCurrentMetrics();
 
-  liveWpm.textContent = wpm;
-  liveAcc.textContent = `${accuracy}%`;
-  liveChars.textContent = `${correctTypedCount}/${totalTypedCount}`;
+  liveWpm.textContent = metrics.netWpm;
+  liveAcc.textContent = `${metrics.accuracy}%`;
+  liveChars.textContent = `${metrics.correctChars}/${metrics.totalChars}`;
 
-  // Update own track
-  const myProgress = Math.round((currentIndex / passageText.length) * 100);
-  updateRacerTrack(socket.id || 'solo', myProgress, wpm, accuracy);
+  updateRacerTrack(socket.id || 'solo', metrics.progress, metrics.netWpm, metrics.accuracy);
 }
 
 function updateRacerTrack(playerId, progress, wpm, accuracy) {
@@ -573,42 +597,78 @@ function updateRacerTrack(playerId, progress, wpm, accuracy) {
   if (accEl) accEl.textContent = `${accuracy}%`;
 }
 
-function sendProgressUpdate() {
+function broadcastProgress() {
   if (isSolo) return;
-  const elapsedMinutes = Math.max(0.01, (Date.now() - startTime) / 60000);
-  const wpm = Math.round((correctTypedCount / 5) / elapsedMinutes);
-  const accuracy = totalTypedCount > 0 ? Math.round((correctTypedCount / totalTypedCount) * 100) : 100;
-  const progress = (currentIndex / passageText.length) * 100;
+  const metrics = calculateCurrentMetrics();
 
   socket.emit('typing_progress', {
-    progress,
-    typedChars: totalTypedCount,
-    correctChars: correctTypedCount,
-    wpm,
-    accuracy
+    progress: metrics.progress,
+    typedChars: metrics.totalChars,
+    correctChars: metrics.correctChars,
+    incorrectChars: metrics.incorrectChars,
+    wpm: metrics.netWpm,
+    rawWpm: metrics.rawWpm,
+    accuracy: metrics.accuracy
   });
 }
 
+function handlePlayerCompletion() {
+  hasFinishedCurrentRace = true;
+  isRacing = false;
+  finishTime = Date.now();
+
+  const metrics = calculateCurrentMetrics();
+  const timeTakenSec = Math.max(1, Math.round((finishTime - startTime) / 1000));
+
+  if (isSolo) {
+    finishSoloRace(metrics, timeTakenSec);
+  } else {
+    // Show waiting banner while waiting for other players
+    finishWaitingBadge.classList.remove('hidden');
+    yourFinishTime.textContent = `${timeTakenSec}s`;
+    finishBadgeStats.textContent = `${metrics.netWpm} WPM, ${metrics.accuracy}% Acc`;
+    window.soundController.playVictory();
+
+    socket.emit('player_finished_typing', {
+      wpm: metrics.netWpm,
+      rawWpm: metrics.rawWpm,
+      accuracy: metrics.accuracy,
+      correctChars: metrics.correctChars,
+      incorrectChars: metrics.incorrectChars,
+      totalChars: metrics.totalChars,
+      timeTaken: timeTakenSec
+    });
+  }
+}
+
 // ==========================================
-// 5. FINISH & RESULTS MODAL
+// 5. FINAL RESULTS MATRIX & MODAL
 // ==========================================
 
 function finishRace(results) {
   isRacing = false;
+  hasFinishedCurrentRace = true;
+  lastResults = results;
+  finishWaitingBadge.classList.add('hidden');
   resultsModal.classList.remove('hidden');
 
-  const myResult = results.find(r => r.id === socket.id);
-  const isWinner = myResult && myResult.rank === 1;
+  // Find user result
+  const myResult = results.find(r => r.id === socket.id) ||
+                   results.find(r => r.id === 'solo') ||
+                   results[0] ||
+                   { wpm: 0, rawWpm: 0, accuracy: 100, correctChars: 0, incorrectChars: 0, timeTaken: 30, rank: 1 };
+
+  const isWinner = myResult.rank === 1;
 
   if (isWinner) {
     resultsTrophy.textContent = '🏆';
-    resultsTitle.textContent = 'Victory! You Won!';
-    resultsSubtitle.textContent = 'Speedy fingers! Confetti for the champion 🎉';
+    resultsTitle.textContent = results.length > 1 ? 'VICTORY! You Won!' : 'Spectacular Run!';
+    resultsSubtitle.textContent = results.length > 1 ? 'Speedy fingers! Confetti for the champion 🎉' : 'Great typing practice!';
     window.soundController.playVictory();
-    // Confetti explosion
+
     if (window.confetti) {
       window.confetti({
-        particleCount: 150,
+        particleCount: 160,
         spread: 80,
         origin: { y: 0.6 }
       });
@@ -616,13 +676,57 @@ function finishRace(results) {
   } else {
     resultsTrophy.textContent = '🥈';
     resultsTitle.textContent = 'Race Finished!';
-    resultsSubtitle.textContent = 'Great match! So close!';
+    resultsSubtitle.textContent = 'Great battle! Beautiful typing!';
   }
 
-  // Populate results table
+  // Populate Hero 4-Column Matrix (Monkeytype Style)
+  matrixWpm.textContent = myResult.wpm;
+  matrixRawWpm.textContent = `raw: ${myResult.rawWpm || myResult.wpm}`;
+  matrixAcc.textContent = `${myResult.accuracy}%`;
+  matrixChars.textContent = myResult.correctChars || myResult.typedChars || 0;
+  matrixCharsBreakdown.innerHTML = `<span class="text-green">${myResult.correctChars || 0}</span> / <span class="text-red">${myResult.incorrectChars || 0}</span>`;
+  matrixTime.textContent = `${myResult.timeTaken || 30}s`;
+
+  // 1v1 Head-to-Head Showdown (Multiplayer only)
+  if (results.length > 1) {
+    headToHeadContainer.classList.remove('hidden');
+    headToHeadCards.innerHTML = '';
+
+    const maxWpm = Math.max(...results.map(r => r.wpm || 1), 1);
+
+    results.slice(0, 2).forEach(r => {
+      const isRacerMe = (r.id === socket.id);
+      const isRacerWinner = (r.rank === 1);
+      const widthPct = Math.round(((r.wpm || 0) / maxWpm) * 100);
+
+      const card = document.createElement('div');
+      card.className = `showdown-player-card ${isRacerWinner ? 'winner' : ''}`;
+      card.innerHTML = `
+        <div class="flex justify-between items-center" style="font-size: 0.95rem;">
+          <div class="flex items-center gap-2">
+            <span style="font-size: 1.3rem;">${r.avatar}</span>
+            <strong>${r.name} ${isRacerMe ? '(You)' : ''}</strong>
+            ${isRacerWinner ? '<span class="badge-tag" style="color: #e2b714; border-color: #e2b714; font-size: 0.75rem;">WINNER 👑</span>' : ''}
+          </div>
+          <div>
+            <strong class="text-gold" style="font-size: 1.2rem;">${r.wpm}</strong>
+            <span class="text-sub" style="font-size: 0.85rem;">WPM (${r.accuracy}%)</span>
+          </div>
+        </div>
+        <div class="showdown-bar-bg">
+          <div class="showdown-bar-fill" style="width: ${widthPct}%;"></div>
+        </div>
+      `;
+      headToHeadCards.appendChild(card);
+    });
+  } else {
+    headToHeadContainer.classList.add('hidden');
+  }
+
+  // Populate Detailed Results Table
   resultsTbody.innerHTML = '';
   results.forEach(r => {
-    const isMe = r.id === socket.id;
+    const isMe = (r.id === socket.id || r.id === 'solo');
     const tr = document.createElement('tr');
     tr.style.fontWeight = isMe ? '700' : 'normal';
     tr.innerHTML = `
@@ -630,11 +734,24 @@ function finishRace(results) {
       <td>${r.avatar} ${r.name} ${isMe ? '(You)' : ''}</td>
       <td class="text-gold" style="font-weight: 700;">${r.wpm}</td>
       <td>${r.accuracy}%</td>
-      <td>${r.correctChars || 0}</td>
+      <td>${r.correctChars || 0}/${r.incorrectChars || 0}</td>
+      <td>${r.timeTaken || 30}s</td>
     `;
     resultsTbody.appendChild(tr);
   });
 }
+
+// Copy Stats to Clipboard
+copyStatsBtn.addEventListener('click', () => {
+  if (!lastResults) return;
+  const myResult = lastResults.find(r => r.id === socket.id) || lastResults[0];
+  const shareText = `⌨️ TypeRacer Showdown: ${myResult.wpm} WPM | ${myResult.accuracy}% Accuracy | ${myResult.correctChars} characters in ${myResult.timeTaken}s! 🏁`;
+  navigator.clipboard.writeText(shareText).then(() => {
+    showToast('📋 Stats copied to clipboard! Share with your GF 💕');
+  }).catch(() => {
+    showToast(`${myResult.wpm} WPM | ${myResult.accuracy}% Accuracy`);
+  });
+});
 
 resultsAgainBtn.addEventListener('click', () => {
   if (isSolo) {
@@ -654,7 +771,7 @@ resultsLobbyBtn.addEventListener('click', () => {
 });
 
 // ==========================================
-// 6. SOLO PRACTICE MODE LOGIC
+// 6. SOLO PRACTICE MODE
 // ==========================================
 
 const SOLO_QUOTES = [
@@ -662,7 +779,9 @@ const SOLO_QUOTES = [
   "In all the world, there is no heart for me like yours. In all the world, there is no love for you like mine.",
   "Success is not final, failure is not fatal: it is the courage to continue that counts in every race.",
   "You are my favorite notification, my easiest hello, and my hardest goodbye.",
-  "The quick brown fox jumps over the lazy dog while dreaming of endless adventures under the starlit sky."
+  "The quick brown fox jumps over the lazy dog while dreaming of endless adventures under the starlit sky.",
+  "Whatever our souls are made of, his and mine are the same.",
+  "To love and be loved is to feel the sun from both sides simultaneously."
 ];
 
 function startSoloRace() {
@@ -706,26 +825,30 @@ function startSoloRace() {
         raceTimer.textContent = remaining;
         if (remaining <= 0) {
           clearInterval(soloTimer);
-          finishSoloRace();
+          if (!hasFinishedCurrentRace) {
+            const metrics = calculateCurrentMetrics();
+            finishSoloRace(metrics, 30);
+          }
         }
       }, 1000);
     }
   }, 1000);
 }
 
-function finishSoloRace() {
+function finishSoloRace(metrics, timeTakenSec) {
   if (soloTimer) clearInterval(soloTimer);
-  const elapsedMinutes = Math.max(0.01, (Date.now() - startTime) / 60000);
-  const wpm = Math.round((correctTypedCount / 5) / elapsedMinutes);
-  const accuracy = totalTypedCount > 0 ? Math.round((correctTypedCount / totalTypedCount) * 100) : 100;
 
   finishRace([{
     id: 'solo',
     name: currentUser.name || 'You',
     avatar: currentUser.avatar,
     rank: 1,
-    wpm,
-    accuracy,
-    correctChars: correctTypedCount
+    wpm: metrics.netWpm,
+    rawWpm: metrics.rawWpm,
+    accuracy: metrics.accuracy,
+    correctChars: metrics.correctChars,
+    incorrectChars: metrics.incorrectChars,
+    typedChars: metrics.totalChars,
+    timeTaken: timeTakenSec
   }]);
 }
