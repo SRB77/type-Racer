@@ -353,4 +353,4 @@ Share the generated `https://xxxx.loca.lt` URL with your partner to play immedia
 ---
 
 ## 📝 License
-MIT License. Built with love for real-time competitive typing. 💕
+MIT License. 
