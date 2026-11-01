@@ -775,13 +775,31 @@ resultsLobbyBtn.addEventListener('click', () => {
 // ==========================================
 
 const SOLO_QUOTES = [
-  "You do not find the happy life. You make it with every step you take.",
-  "In all the world, there is no heart for me like yours. In all the world, there is no love for you like mine.",
-  "Success is not final, failure is not fatal: it is the courage to continue that counts in every race.",
-  "You are my favorite notification, my easiest hello, and my hardest goodbye.",
-  "The quick brown fox jumps over the lazy dog while dreaming of endless adventures under the starlit sky.",
-  "Whatever our souls are made of, his and mine are the same.",
-  "To love and be loved is to feel the sun from both sides simultaneously."
+  "Look again at that dot. That's here. That's home. That's us. On it everyone you love, everyone you know, everyone you ever heard of, every human being who ever was, lived out their lives. The aggregate of our joy and suffering, thousands of confident religions, ideologies, and economic doctrines, every hunter and forager, every hero and coward, every creator and destroyer of civilization lived there on a mote of dust suspended in a sunbeam.",
+
+  "In vain I have struggled. It will not do. My feelings will not be repressed. You must allow me to tell you how ardently I admire and love you. In spite of all my endeavors to overcome what I considered your inferiority, the very great affection that I bear for you has conquered all my objections and conquered all my former reservations.",
+
+  "It's like in the great stories, Mr. Frodo. The ones that really mattered. Full of darkness and danger they were. And sometimes you didn't want to know the end, because how could the end be happy? How could the world go back to the way it was when so much bad had happened? But in the end, it's only a passing thing, this shadow. Even darkness must pass. A new day will come, and when the sun shines it will shine out the clearer.",
+
+  "He looked at her the way all women want to be looked at by a man. Gatsby believed in the green light, the orgastic future that year by year recedes before us. It eluded us then, but that's no matter tomorrow we will run faster, stretch out our arms farther, and one fine morning so we beat on, boats against the current, borne back ceaselessly into the past.",
+
+  "If there's any kind of magic in this world, it must be in the attempt of understanding someone, sharing something. I know it's almost impossible to succeed, but who cares, really? The answer must be in the attempt. When you look at someone and you see their imperfections, yet every little nuance makes them more endearing to you, that is when you know that you are truly in love.",
+
+  "Your time is limited, so don't waste it living someone else's life. Don't be trapped by dogma, which is living with the results of other people's thinking. Don't let the noise of others' opinions drown out your own inner voice. And most important, have the courage to follow your heart and intuition. They somehow already know what you truly want to become.",
+
+  "When you arise in the morning think of what a privilege it is to be alive, to think, to enjoy, to love. Very little is needed to make a happy life; it is all within yourself, in your way of thinking. Dwell on the beauty of life. Watch the stars, and see yourself running with them. Never let the future disturb you; you will meet it with the same weapons of reason.",
+
+  "Love is the one thing we're capable of perceiving that transcends dimensions of time and space. Maybe we should trust that, even if we can't understand it yet. It has meaning, yes, social utility, social bonding, child rearing, but we love people who have died. Where's the social utility in that? Love is not something we invented; it's observable, powerful.",
+
+  "In the depth of winter, I finally learned that within me there lay an invincible summer. And that makes me happy. For it says that no matter how hard the world pushes against me, within me, there's something stronger, something better, pushing right back, full of radiant warmth, unshakable resolve, and endless affection for the journey.",
+
+  "It is only with the heart that one can see rightly; what is essential is invisible to the eye. It is the time you have wasted for your rose that makes your rose so important. People have forgotten this truth, but you must not forget it. You become responsible forever for what you have tamed. You are responsible for your rose.",
+
+  "He wondered if she could see the way his heart skipped every time she looked up at him. She was luminous, like a fallen star that had decided to walk the earth, leaving little trails of warmth and laughter in every room she entered. He wanted nothing more than to sit beside her and listen to her speak until the night ran out of hours.",
+
+  "For what it's worth: it's never too late or, in my case, too early to be whoever you want to be. There's no time limit, stop whenever you want. You can change or stay the same, there are no rules to this thing. We can make the best or the worst of it. I hope you make the best of it. And I hope you see things that startle you. I hope you feel things you never felt before.",
+
+  "A purpose of human life, no matter who is controlling it, is to love whoever is around to be loved. Be soft. Do not let the world make you hard. Do not let pain make you hate. Do not let the bitterness steal your sweetness. Take pride that even though the rest of the world may disagree, you still believe it to be a beautiful place."
 ];
 
 function startSoloRace() {
