@@ -53,6 +53,13 @@ const demoInputField = document.getElementById('demo-input-field');
 const demoWpm = document.getElementById('demo-wpm');
 const demoAcc = document.getElementById('demo-acc');
 
+// Invite Banner Elements
+const inviteBanner = document.getElementById('invite-banner');
+const inviteCodePill = document.getElementById('invite-code-pill');
+const directJoinBtn = document.getElementById('direct-join-btn');
+
+let soloCountdownInterval = null;
+
 // Inputs
 const playerNameInput = document.getElementById('player-name-input');
 const avatarGrid = document.getElementById('avatar-selector');
@@ -141,22 +148,50 @@ soundToggleBtn.textContent = window.soundController.enabled ? '🔊' : '🔇';
 // Check URL query parameters for invite link
 const urlParams = new URLSearchParams(window.location.search);
 const inviteCode = urlParams.get('room');
-if (inviteCode) {
-  joinCodeInput.value = inviteCode.toUpperCase();
-}
 
 // ==========================================
 // VIEW SWITCHING (Landing Page <-> Game Area)
 // ==========================================
 
+function cancelActiveRaces() {
+  if (soloTimer) {
+    clearInterval(soloTimer);
+    soloTimer = null;
+  }
+  if (soloCountdownInterval) {
+    clearInterval(soloCountdownInterval);
+    soloCountdownInterval = null;
+  }
+  isRacing = false;
+  hasFinishedCurrentRace = false;
+  if (countdownOverlay) countdownOverlay.classList.add('hidden');
+  if (resultsModal) resultsModal.classList.add('hidden');
+  if (finishWaitingBadge) finishWaitingBadge.classList.add('hidden');
+}
+
 function showGameView() {
   window.soundController.init();
+  cancelActiveRaces();
+  isSolo = false;
   if (landingView) landingView.classList.add('hidden');
   if (gameView) gameView.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function showLandingView() {
+  cancelActiveRaces();
+  if (currentRoom) {
+    socket.emit('leave_room');
+    currentRoom = null;
+    isHost = false;
+  }
+  isSolo = false;
+
+  // Restore screen visibility back to setup
+  if (raceScreen) raceScreen.classList.add('hidden');
+  if (lobbyScreen) lobbyScreen.classList.add('hidden');
+  if (setupScreen) setupScreen.classList.remove('hidden');
+
   if (gameView) gameView.classList.add('hidden');
   if (landingView) landingView.classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -180,7 +215,19 @@ if (navSoloBtn) {
 
 // Auto-navigate directly to game view if entering with a room invite code
 if (inviteCode) {
+  const code = inviteCode.trim().toUpperCase();
+  joinCodeInput.value = code;
+  if (inviteBanner && inviteCodePill) {
+    inviteBanner.classList.remove('hidden');
+    inviteCodePill.textContent = code;
+  }
   showGameView();
+}
+
+if (directJoinBtn) {
+  directJoinBtn.addEventListener('click', () => {
+    joinRoomBtn.click();
+  });
 }
 
 // ==========================================
@@ -302,12 +349,33 @@ soloPracticeBtn.addEventListener('click', () => {
 copyLinkBtn.addEventListener('click', () => {
   if (!currentRoom) return;
   const inviteUrl = `${window.location.origin}?room=${currentRoom.code}`;
-  navigator.clipboard.writeText(inviteUrl).then(() => {
-    showToast('📋 Invite link copied! Send it to her 💕');
-  }).catch(() => {
-    showToast(`Room Code: ${currentRoom.code}`);
-  });
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteUrl).then(() => {
+      showToast('📋 Invite link copied! Send it to her 💕');
+    }).catch(() => {
+      fallbackCopy(inviteUrl);
+    });
+  } else {
+    fallbackCopy(inviteUrl);
+  }
 });
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast('📋 Invite link copied! Send it to her 💕');
+  } catch (err) {
+    showToast(`Room Code: ${currentRoom ? currentRoom.code : ''}`);
+  }
+  document.body.removeChild(ta);
+}
 
 toggleReadyBtn.addEventListener('click', () => {
   socket.emit('toggle_ready');
@@ -318,7 +386,13 @@ startRaceBtn.addEventListener('click', () => {
 });
 
 leaveRoomBtn.addEventListener('click', () => {
-  location.reload();
+  if (currentRoom) {
+    socket.emit('leave_room');
+    currentRoom = null;
+    isHost = false;
+  }
+  lobbyScreen.classList.add('hidden');
+  setupScreen.classList.remove('hidden');
 });
 
 // Host settings listener
@@ -343,16 +417,22 @@ document.querySelectorAll('#host-settings .config-btn').forEach(btn => {
 // ==========================================
 
 socket.on('room_created', ({ roomCode, isHost: hostStatus, roomState }) => {
+  isSolo = false;
+  cancelActiveRaces();
   currentRoom = roomState;
   isHost = hostStatus;
+  showGameView();
   setupScreen.classList.add('hidden');
   lobbyScreen.classList.remove('hidden');
   updateLobbyUI(roomState);
 });
 
 socket.on('room_joined', ({ roomCode, isHost: hostStatus, roomState }) => {
+  isSolo = false;
+  cancelActiveRaces();
   currentRoom = roomState;
   isHost = hostStatus;
+  showGameView();
   setupScreen.classList.add('hidden');
   lobbyScreen.classList.remove('hidden');
   updateLobbyUI(roomState);
@@ -365,6 +445,9 @@ socket.on('room_updated', (roomState) => {
 });
 
 socket.on('countdown_start', ({ count }) => {
+  isSolo = false;
+  cancelActiveRaces();
+  showGameView();
   lobbyScreen.classList.add('hidden');
   resultsModal.classList.add('hidden');
   countdownOverlay.classList.remove('hidden');
@@ -381,6 +464,9 @@ socket.on('countdown_tick', ({ count }) => {
 });
 
 socket.on('race_started', ({ passage, duration, players }) => {
+  isSolo = false;
+  cancelActiveRaces();
+  showGameView();
   countdownOverlay.classList.add('hidden');
   raceScreen.classList.remove('hidden');
   window.soundController.playGo();
@@ -491,6 +577,15 @@ function updateLobbyUI(room) {
 // ==========================================
 
 function setupRace(passage, duration, players) {
+  if (soloTimer) {
+    clearInterval(soloTimer);
+    soloTimer = null;
+  }
+  if (soloCountdownInterval) {
+    clearInterval(soloCountdownInterval);
+    soloCountdownInterval = null;
+  }
+
   passageText = passage;
   currentIndex = 0;
   userInputs = [];
@@ -763,6 +858,12 @@ function finishRace(results) {
   isRacing = false;
   hasFinishedCurrentRace = true;
   lastResults = results;
+
+  // If user is currently on the landing page, do not pop up results modal!
+  if (landingView && !landingView.classList.contains('hidden')) {
+    return;
+  }
+
   finishWaitingBadge.classList.add('hidden');
   resultsModal.classList.remove('hidden');
 
@@ -877,8 +978,10 @@ resultsAgainBtn.addEventListener('click', () => {
 });
 
 resultsLobbyBtn.addEventListener('click', () => {
+  cancelActiveRaces();
   if (isSolo) {
-    location.reload();
+    resultsModal.classList.add('hidden');
+    showLandingView();
   } else {
     socket.emit('play_again');
   }
@@ -917,6 +1020,9 @@ const SOLO_QUOTES = [
 ];
 
 function startSoloRace() {
+  cancelActiveRaces();
+  isSolo = true;
+
   setupScreen.classList.add('hidden');
   lobbyScreen.classList.add('hidden');
   resultsModal.classList.add('hidden');
@@ -926,13 +1032,22 @@ function startSoloRace() {
   countdownNumber.textContent = count;
   window.soundController.playTick();
 
-  const timer = setInterval(() => {
+  if (soloCountdownInterval) clearInterval(soloCountdownInterval);
+  soloCountdownInterval = setInterval(() => {
     count--;
     if (count > 0) {
       countdownNumber.textContent = count;
       window.soundController.playTick();
     } else {
-      clearInterval(timer);
+      clearInterval(soloCountdownInterval);
+      soloCountdownInterval = null;
+
+      // Ensure user hasn't left to home during countdown
+      if (!isSolo || (landingView && !landingView.classList.contains('hidden'))) {
+        cancelActiveRaces();
+        return;
+      }
+
       countdownOverlay.classList.add('hidden');
       raceScreen.classList.remove('hidden');
       window.soundController.playGo();
@@ -953,10 +1068,19 @@ function startSoloRace() {
       let remaining = 30;
       if (soloTimer) clearInterval(soloTimer);
       soloTimer = setInterval(() => {
+        // Ensure user hasn't left to home
+        if (!isSolo || (landingView && !landingView.classList.contains('hidden'))) {
+          clearInterval(soloTimer);
+          soloTimer = null;
+          cancelActiveRaces();
+          return;
+        }
+
         remaining--;
         raceTimer.textContent = remaining;
         if (remaining <= 0) {
           clearInterval(soloTimer);
+          soloTimer = null;
           if (!hasFinishedCurrentRace) {
             const metrics = calculateCurrentMetrics();
             finishSoloRace(metrics, 30);
@@ -968,7 +1092,10 @@ function startSoloRace() {
 }
 
 function finishSoloRace(metrics, timeTakenSec) {
-  if (soloTimer) clearInterval(soloTimer);
+  if (soloTimer) {
+    clearInterval(soloTimer);
+    soloTimer = null;
+  }
 
   finishRace([{
     id: 'solo',

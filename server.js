@@ -58,8 +58,51 @@ function createPlayerObject(socketId, name, avatar) {
 io.on('connection', (socket) => {
   console.log(`[Socket Connected] ${socket.id}`);
 
+  function handlePlayerLeave(socket) {
+    const code = socket.roomCode;
+    if (!code) return;
+
+    const room = rooms.get(code);
+    if (!room) {
+      socket.roomCode = null;
+      return;
+    }
+
+    delete room.players[socket.id];
+    socket.leave(code);
+    socket.roomCode = null;
+
+    const remainingPlayers = Object.keys(room.players);
+
+    if (remainingPlayers.length === 0) {
+      if (room.timerInterval) clearInterval(room.timerInterval);
+      rooms.delete(code);
+      console.log(`[Room Deleted] ${code}`);
+    } else {
+      if (room.hostId === socket.id) {
+        room.hostId = remainingPlayers[0];
+      }
+      io.to(code).emit('player_left', {
+        leftPlayerId: socket.id,
+        newHostId: room.hostId,
+        roomState: sanitizeRoomState(room)
+      });
+
+      // If race was running and remaining players are all finished, finalize
+      if (room.status === 'racing') {
+        const allFinished = Object.values(room.players).every(p => p.finished);
+        if (allFinished) {
+          if (room.timerInterval) clearInterval(room.timerInterval);
+          finishRace(room);
+        }
+      }
+    }
+  }
+
   // Create a new room
   socket.on('create_room', ({ playerName, avatar, timeLimit = 30, mode = 'quote' }) => {
+    handlePlayerLeave(socket);
+
     const roomCode = generateRoomCode();
     const player = createPlayerObject(socket.id, playerName || 'Player 1', avatar || '🏎️');
     player.ready = true; // Host is ready by default
@@ -92,6 +135,8 @@ io.on('connection', (socket) => {
 
   // Join existing room
   socket.on('join_room', ({ roomCode, playerName, avatar }) => {
+    handlePlayerLeave(socket);
+
     const code = (roomCode || '').trim().toUpperCase();
     const room = rooms.get(code);
 
@@ -296,41 +341,15 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('room_reset', sanitizeRoomState(room));
   });
 
+  // Leave Room explicitly
+  socket.on('leave_room', () => {
+    handlePlayerLeave(socket);
+  });
+
   // Disconnect handler
   socket.on('disconnect', () => {
     console.log(`[Socket Disconnected] ${socket.id}`);
-    const code = socket.roomCode;
-    if (!code) return;
-
-    const room = rooms.get(code);
-    if (!room) return;
-
-    delete room.players[socket.id];
-    const remainingPlayers = Object.keys(room.players);
-
-    if (remainingPlayers.length === 0) {
-      if (room.timerInterval) clearInterval(room.timerInterval);
-      rooms.delete(code);
-      console.log(`[Room Deleted] ${code}`);
-    } else {
-      if (room.hostId === socket.id) {
-        room.hostId = remainingPlayers[0];
-      }
-      io.to(code).emit('player_left', {
-        leftPlayerId: socket.id,
-        newHostId: room.hostId,
-        roomState: sanitizeRoomState(room)
-      });
-
-      // If race was running and remaining players are all finished, finalize
-      if (room.status === 'racing') {
-        const allFinished = Object.values(room.players).every(p => p.finished);
-        if (allFinished) {
-          if (room.timerInterval) clearInterval(room.timerInterval);
-          finishRace(room);
-        }
-      }
-    }
+    handlePlayerLeave(socket);
   });
 });
 
